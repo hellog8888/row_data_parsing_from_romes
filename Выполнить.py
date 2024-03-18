@@ -21,7 +21,6 @@ BASE_STATION_OPERATOR = dict()
 BS_LIST_LAN_LON = dict()
 
 
-@measure_time
 def search_row(tecRaw_file):
     temp_row_from_reader = []
     temp_dict_EARFCN = dict()
@@ -40,7 +39,7 @@ def search_row(tecRaw_file):
                     break
             except IndexError:
                 continue
-
+        print(' 3.1 work with .csv')
         if flag:
             for row in csv.reader(tecRaw_in, delimiter=','):
                 flag_count += 1
@@ -51,10 +50,10 @@ def search_row(tecRaw_file):
                         temp_row_from_reader.append(*row)
                         BASE_STATION_OPERATOR[temp_row] = BASE_STATION_OPERATOR.get(temp_row, temp_row_operator)
 
-    print(' 3.1 Создание папок')
+    print(' 3.2 Создание папок')
     create_folders(BASE_STATION_LIST, DICT_OPERATOR, BASE_STATION_OPERATOR)
 
-    print(' 3.2')
+    print(' 3.3')
     for i in BASE_STATION_LIST:
         try:
             name_operator = DICT_OPERATOR[BASE_STATION_OPERATOR[i]]
@@ -99,7 +98,7 @@ def search_row(tecRaw_file):
                         pass
 
             temp_dict_EARFCN.clear()
-            os.remove(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}.csv')
+            #os.remove(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}.csv')
 
         except FileExistsError:
             pass
@@ -107,7 +106,7 @@ def search_row(tecRaw_file):
             pass
 
 
-    print(' 3.3 Создание РЭО | Создание спектра | ..._peleng.txt')
+    print(' 3.4 Создание РЭО | Создание спектра | ..._peleng.txt')
     for i in BASE_STATION_LIST:
         try:
             name_operator = DICT_OPERATOR[BASE_STATION_OPERATOR[i]]

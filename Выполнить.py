@@ -1,10 +1,11 @@
 import os
-import glob
 import csv
+import glob
 from lib.measure_time import measure_time
-from lib.sort_folders import sort_folders, name_folder
 from lib.search_coords import convert_coords
 from lib.convert_to_img import convert_to_img
+from lib.work_with_folders import sort_folders, get_name_folder, create_folders
+from lib.get_data_bs_list_and_coords import base_station_get_from_export_romes, bs_lan_lon_from_export_romes
 
 
 DICT_OPERATOR = {'2': 'megafon', '20': 't2_mobile', '99': 'beeline'}
@@ -19,47 +20,6 @@ BASE_STATION_LIST = []
 BASE_STATION_OPERATOR = dict()
 BS_LIST_LAN_LON = dict()
 
-
-def base_station_get_from_export_romes(file_txt):
-    with open(file_txt, 'r') as file_txt_r:
-        return list(set([line[line.strip().find(':') + 1: line.strip().find('/')] for line in file_txt_r if
-                         line.startswith('eNodeB') and line.strip().split(';')[13] != 11]))
-
-
-def bs_lan_lon_from_export_romes(file_txt):
-    with open(file_txt, 'r') as file_txt_r:
-        temp_rows = dict()
-
-        for k in file_txt_r:
-            if k.startswith('eNodeB') and k.strip().split(';')[13] != '11':
-                t = f"{k[k.strip().find(':') + 1: k.strip().find('/')]}_{k.strip().split(';')[13]}_{k.strip().split(';')[16]}"
-                temp_rows[t] = temp_rows.get(t, []) + [
-                    f"{k.strip().split(';')[1]};{k.strip().split(';')[2]};{k.strip().split(';')[4]};{k.strip().split(';')[5]}"]
-
-        temp_rows_2 = {k: sorted(v, key=lambda x: float(x.split(';')[2]))[0] for k, v in temp_rows.items()}
-
-        #temp_rows_3 = {f"{k.split('_')[0]}_{DICT_OPERATOR[k.split('_')[1]]}_{DICT_FREQ[k.split('_')[2]]}": v for k, v in
-        #               temp_rows_2.items() if v.split(';')[0] != '0'}
-
-        temp_rows_3 = {}
-        for k, v in temp_rows_2.items():
-            try:
-                if v.split(';')[0] != '0':
-                    temp_rows_3[f"{k.split('_')[0]}_{DICT_OPERATOR[k.split('_')[1]]}_{DICT_FREQ[k.split('_')[2]]}"] = v
-            except KeyError:
-                pass
-
-        return temp_rows_3
-
-
-def create_folders(data):
-    for num_bs in data:
-        try:
-            os.mkdir(f'lib\\temp_folder\{num_bs}_{DICT_OPERATOR[BASE_STATION_OPERATOR[num_bs]]}')
-        except FileExistsError:
-            pass
-        except KeyError:
-            pass
 
 @measure_time
 def search_row(tecRaw_file):
@@ -92,7 +52,7 @@ def search_row(tecRaw_file):
                         BASE_STATION_OPERATOR[temp_row] = BASE_STATION_OPERATOR.get(temp_row, temp_row_operator)
 
     print(' 3.1 Создание папок')
-    create_folders(BASE_STATION_LIST)
+    create_folders(BASE_STATION_LIST, DICT_OPERATOR, BASE_STATION_OPERATOR)
 
     print(' 3.2')
     for i in BASE_STATION_LIST:
@@ -146,7 +106,8 @@ def search_row(tecRaw_file):
         except KeyError:
             pass
 
-    print(' 3.3 Создание РЭО')
+
+    print(' 3.3 Создание РЭО | Создание спектра | ..._peleng.txt')
     for i in BASE_STATION_LIST:
         try:
             name_operator = DICT_OPERATOR[BASE_STATION_OPERATOR[i]]
@@ -157,8 +118,6 @@ def search_row(tecRaw_file):
         except KeyError:
             pass
 
-    print(' 3.4 Создание спектра')
-    for i in BASE_STATION_LIST:
         try:
             name_operator = DICT_OPERATOR[BASE_STATION_OPERATOR[i]]
             with open(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}.txt') as temp_file_to_xml:
@@ -168,7 +127,7 @@ def search_row(tecRaw_file):
                     temp_peleng_bs = f"{i}_{name_operator}_{DICT_FREQ[earfcn_x.strip()]}"
 
                     if temp_peleng_bs in BS_LIST_LAN_LON:
-                        with open(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}_{freq_x.strip()}_sys.txt',
+                        with open(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}_{freq_x.strip()}_peleng.txt',
                                   'w') as file_with_coords:
                             temp_data_peling = BS_LIST_LAN_LON[temp_peleng_bs]
 
@@ -252,15 +211,16 @@ def search_row(tecRaw_file):
 
 if __name__ == "__main__":
 
+    print('1. Поиск данных в папке Исходные_данные')
     export_file_csv = glob.glob('Исходные_данные\**\*.csv', recursive=True)
     export_file_txt = glob.glob('Исходные_данные\**\*.txt', recursive=True)
-    name_folder = name_folder('Исходные_данные')
+    print(' 1.1 Получение имени destination folder')
+    name_folder = get_name_folder('Исходные_данные')
 
-    print('1. Получение списка БС')
+    print('2. Получение списка БС')
     BASE_STATION_LIST = base_station_get_from_export_romes(export_file_txt[0])
-
-    print('2. Создание словаря с координатами БС')
-    BS_LIST_LAN_LON = bs_lan_lon_from_export_romes(export_file_txt[0])
+    print(' 2.1 Создание словаря с координатами БС')
+    BS_LIST_LAN_LON = bs_lan_lon_from_export_romes(export_file_txt[0], DICT_OPERATOR, DICT_FREQ)
 
     print('3. Основной блок кода')
     search_row(export_file_csv[0])
@@ -268,7 +228,8 @@ if __name__ == "__main__":
     print('4. Сортировка папок')
     sort_folders(name_folder)
 
+    print('')
     print('5. Выполнено')
 
 
-# Разбить блок создание спектра, убрать sys (добавить в версию с БД)
+# first stage экспорт Данных в оперативку с которыми далее работаем

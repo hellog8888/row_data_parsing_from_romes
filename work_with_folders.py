@@ -3,6 +3,13 @@ import shutil
 import datetime
 
 
+def check_or_create_folder(path):
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
+
 def get_name_folder(name):
     for root, dirs, files in os.walk(name):
         try:

@@ -2,10 +2,11 @@ import os
 import csv
 import glob
 from lib.measure_time import measure_time
-from lib.search_coords import convert_coords
+from lib.search_coords import convert_coords, search_coords
 from lib.convert_to_img import convert_to_img
-from lib.work_with_folders import sort_folders, get_name_folder, create_folders
+from lib.work_with_folders import sort_folders, get_name_folder, create_folders, check_or_create_folder
 from lib.get_data_bs_list_and_coords import base_station_get_from_export_romes, bs_lan_lon_from_export_romes
+from lib.create_database_from_eirs import create_database_from_eirs_
 
 
 DICT_OPERATOR = {'2': 'megafon', '20': 't2_mobile', '99': 'beeline'}
@@ -128,6 +129,7 @@ def search_row(tecRaw_file):
                     if temp_peleng_bs in BS_LIST_LAN_LON:
                         with open(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}_{freq_x.strip()}_peleng.txt',
                                   'w') as file_with_coords:
+
                             temp_data_peling = BS_LIST_LAN_LON[temp_peleng_bs]
 
                             E, N, E_error, N_error = temp_data_peling.split(';')
@@ -139,9 +141,9 @@ def search_row(tecRaw_file):
                             print(f'Долгота (погрешность пеленгации в км): {E_error}', file=file_with_coords)
                             print('', file=file_with_coords)
 
-                            # Поиск координат в Postgrees
-                            # if float(N_error) + float(E_error) < 16.0:
-                            #     [print(*x, file=file_with_coords) for x in search_coords(E, N) if x]
+                            if float(N_error) + float(E_error) < 16.0:
+                                [print(*x, file=file_with_coords) for x in search_coords(E, N) if x]
+
 
                     with open(f'lib\\temp_folder\{i}_{name_operator}\{i}_{name_operator}_{freq_x.strip()}.xml',
                               'w') as temp_result_file_xml:
@@ -210,16 +212,21 @@ def search_row(tecRaw_file):
 
 if __name__ == "__main__":
 
-    print('1. Поиск данных в папке Исходные_данные')
+    print('1. Получение данных')
+    print(' - 1.1 Получение данных в папке Исходные_данные')
     export_file_csv = glob.glob('Исходные_данные\**\*.csv', recursive=True)
     export_file_txt = glob.glob('Исходные_данные\**\*.txt', recursive=True)
-    print(' 1.1 Получение имени destination folder')
+    print(' - 1.2 Получение имени destination folder')
     name_folder = get_name_folder('Исходные_данные')
 
-    print('2. Получение списка БС')
+    print('2. Считывание данных')
+    print(' - 2.1 Создание списка БС')
     BASE_STATION_LIST = base_station_get_from_export_romes(export_file_txt[0])
-    print(' 2.1 Создание словаря с координатами БС')
+    print(' - 2.2 Создание словаря с координатами БС')
     BS_LIST_LAN_LON = bs_lan_lon_from_export_romes(export_file_txt[0], DICT_OPERATOR, DICT_FREQ)
+
+    print(' - 2.3 Создание базы данных SQL')
+    create_database_from_eirs_('lib/database_from_eirs')
 
     print('3. Основной блок кода')
     search_row(export_file_csv[0])
@@ -229,6 +236,3 @@ if __name__ == "__main__":
 
     print('')
     print('5. Выполнено')
-
-
-# first stage экспорт Данных в оперативку с которыми далее работаем

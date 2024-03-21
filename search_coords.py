@@ -83,4 +83,6 @@ def search_coords(E, N):
         for j in range(len(E_pos)):
             coords_list.append(f'{i};{E_pos[j]}')
 
-    return query_data_from_database(coords_list)
+    #return query_data_from_database(coords_list)
+    return coords_list
+
